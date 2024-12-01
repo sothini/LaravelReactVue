@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+
+  # laravel 
+  laravel:
+    build:
+      context: ./laravel
+      dockerfile: Dockerfile
+    volumes:
+      - ./laravel:/var/www
+    ports:
+      - "9000:9000" # Laravel application on port 9000
+    networks:
+      - app-network
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=laravel
+      - DB_USERNAME=laravel
+      - DB_PASSWORD=password
+
+  webserver:
+    image: nginx:1.27.2
+    volumes:
+      - ./laravel:/var/www
+      - ./vue:/var/www/vue
+      - ./reactor:/var/www/react
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8080:80"
+      - "8081:81"
+      - "8082:82"
+    depends_on:
+      - laravel
+      - vue
+    networks:
+      - app-network
+
+  vue:
+    build:
+      context: ./vue
+      dockerfile: Dockerfile
+    ports:
+      - "81:80"
+    networks:
+      - app-network
+
+  react:
+    build:
+      context: ./reactor
+      dockerfile: Dockerfile
+    ports:
+      - "82:80"
+    networks:
+      - app-network
+
+  # db
+  db:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: password
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - app-network
+    ports:
+      - "3306:3306"
+
+  # phpMyAdmin Service
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      - PMA_HOST=db
+      - PMA_PORT=3306
+      - PMA_USER=laravel
+      - PMA_PASSWORD=password
+    ports:
+      - "8088:80"
+    depends_on:
+      - db
+    links:
+      - db
+    networks:
+      - app-network
+
+  # Redis Service
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+networks:
+  app-network:
+
+
+volumes:
+  db-data:
